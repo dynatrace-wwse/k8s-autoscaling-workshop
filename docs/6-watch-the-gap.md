@@ -1,8 +1,8 @@
 # 6. Watch the Gap Shrink
 
 The pods now reserve what they use plus headroom. Dynatrace sees the new requests within a minute or
-two. Run the query from step 3 again, or this one, which shows CPU requests appear where there were
-none and memory requests move toward usage:
+two. Run the query from step 3 again, or this one, which shows CPU requests appear on the app
+containers and memory requests move toward usage:
 
 ```dql
 timeseries {
@@ -11,23 +11,29 @@ timeseries {
     mem_requested = sum(dt.kubernetes.container.requests_memory),
     mem_used = max(dt.kubernetes.container.memory_working_set)
   },
-  by:{k8s.workload.name},
+  by:{k8s.workload.name, k8s.container.name},
   filter: endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}") AND k8s.namespace.name == "otel-demo",
   from:now()-1h
+| filter k8s.container.name == k8s.workload.name
 ```
+
+The last line keeps the application containers. Each pod also runs a short `dynatrace-operator` init
+container, injected by the DynaKube, which requests 30m CPU of its own: left in, it makes every
+workload look as if it had a CPU request all along.
 
 Switch the result to a line chart: for each workload, *requested* steps to just above *used* at the
 moment you applied the recommendations.
 
-This check proves Dynatrace now reports CPU requests for your workloads — before step 5 they had
-none:
+This check proves Dynatrace now reports CPU requests on your application containers — before step 5
+they had none:
 
 <!-- LAB_QUESTION
 type: dql-verification
 question: "Verify Dynatrace reports the new CPU requests of your otel-demo workloads"
 buttonText: "Check new requests"
 dql: |
-  timeseries cpu_requested = sum(dt.kubernetes.container.requests_cpu), by:{k8s.workload.name}, filter: endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}") AND k8s.namespace.name == "otel-demo", from:now()-10m
+  timeseries cpu_requested = sum(dt.kubernetes.container.requests_cpu), by:{k8s.workload.name, k8s.container.name}, filter: endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}") AND k8s.namespace.name == "otel-demo", from:now()-10m
+  | filter k8s.container.name == k8s.workload.name
   | filter arrayLast(cpu_requested) > 0
   | summarize count = count()
 expect:

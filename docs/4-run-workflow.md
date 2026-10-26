@@ -36,6 +36,12 @@ Then, in your tenant:
 2. Open the **Workflows** app and choose **Upload**, then select the file.
 3. The workflow opens as *Smart K8s Resource Optimizer ({{DT_SESSION_ID}})*. Choose **Run**.
 
+!!! warning "First run fails with `Missing OAuth scope 'storage:smartscape:read'`?"
+    A workflow runs with **your** permissions, but only those you have authorized the
+    AutomationEngine to use. Open the Workflows app's settings (gear icon) → **Authorization
+    settings**, search for `storage:smartscape:read`, tick it, **Save**, and run again. If the page
+    says the change won't take effect, your user lacks the permission itself: tell your trainer.
+
 ## Read the result
 
 When the run is green, select the `compute_recommendations` task and open its **Result**:
@@ -43,7 +49,7 @@ When the run is green, select the `compute_recommendations` task and open its **
 The task's **Log** prints one line per container, for example:
 
 ```text
-cart/cart: cpu 0m -> 2m, memory 100Mi -> 31Mi
+cart/cart: cpu 0m -> 29m, memory 100Mi -> 243Mi
 ```
 
 The same query runs from your terminal — this is what you apply in the next step:

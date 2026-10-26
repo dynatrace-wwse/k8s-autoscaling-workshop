@@ -15,9 +15,10 @@ timeseries {
     mem_requested = sum(dt.kubernetes.container.requests_memory),
     cpu_used = max(dt.kubernetes.container.cpu_usage)
   },
-  by:{k8s.workload.name},
+  by:{k8s.workload.name, k8s.container.name},
   filter: endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}") AND k8s.namespace.name == "otel-demo",
   from:now()-30m
+| filter k8s.container.name == k8s.workload.name
 | fieldsAdd mem_used_p95_MiB = arrayPercentile(mem_used, 95) / 1048576,
             mem_requested_MiB = arrayAvg(mem_requested) / 1048576,
             cpu_used_p95_millicores = arrayPercentile(cpu_used, 95)
@@ -32,6 +33,10 @@ Read the result:
   is over-committed; under pressure, these pods are the first to be evicted.
 - **Far below 100** — reserved and idle.
 - **CPU** has no request at all yet, so every millicore used is unreserved.
+
+The `k8s.container.name == k8s.workload.name` line keeps the application container of each pod and
+drops the `dynatrace-operator` init container the DynaKube injects, whose own small requests would
+otherwise be added in.
 
 The workflow you run next uses the same metrics, over **7 days** and through **Smartscape**: it walks
 from each container to its pod and its workload, keeps only workloads annotated
