@@ -256,7 +256,8 @@ applyRecommendations() {
   done <<< "$rows"
   [ "$applied" -gt 0 ] || { printError "No workload was patched"; return 1; }
   printInfo "$applied container(s) patched — Kubernetes rolls the pods with the new requests"
-  for w in $OTEL_DEMO_WORKLOADS; do
+  # $(...) so zsh (the learner's shell) splits the list as bash does
+  for w in $(echo "$OTEL_DEMO_WORKLOADS"); do
     kubectl -n "$OTEL_DEMO_NS" rollout status deployment "$w" --timeout=180s >/dev/null 2>&1 \
       || kubectl -n "$OTEL_DEMO_NS" rollout status statefulset "$w" --timeout=180s >/dev/null 2>&1
   done
