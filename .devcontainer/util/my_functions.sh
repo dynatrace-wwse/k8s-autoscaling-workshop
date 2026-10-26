@@ -123,6 +123,11 @@ checkCollectorRunning() {
 # The workflow's collect_underutilized_workloads query, scoped to this learner's
 # cluster (the tenant may be shared). $1 = session filter. 7-day p95; a young
 # cluster simply has less history. Recommended = p95 usage x 1.30.
+# The CPU request is looked up on its own: a timeseries over several metrics only
+# returns containers that have ALL of them, and the demo's containers have no CPU
+# request — in one timeseries (as upstream) every one of them dropped out.
+# Requests are avg, not sum: the 7-day query rolls up to 1-hour buckets, and a sum
+# there adds up every sample of the hour (100Mi read as 6000Mi).
 _recommendationsDql() {
   cat <<DQLEOF
 smartscapeNodes CONTAINER
@@ -136,10 +141,13 @@ smartscapeNodes CONTAINER
 | fieldsAdd optimization = if(isNotNull(\`tags:k8s.annotations\`[\`resource-optimization.dynatrace.com/enabled\`]), \`tags:k8s.annotations\`[\`resource-optimization.dynatrace.com/enabled\`], else: "false")
 | filter optimization == "true"
 | lookup [
-    timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set), memrequest_value = sum(dt.kubernetes.container.requests_memory), cpusagevalues = max(dt.kubernetes.container.cpu_usage), cpurequest_value = sum(dt.kubernetes.container.requests_cpu), by:{dt.smartscape.container}, from: -7d
-    | fieldsAdd request_memory = arrayPercentile(memrequest_value, 95), usage_memory = arrayPercentile(memusagevalues, 95)
-    | fieldsAdd request_cpu = arrayPercentile(cpurequest_value, 95), usage_cpu = arrayPercentile(cpusagevalues, 95)
-  ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{usage_memory, request_memory, usage_cpu, request_cpu}
+    timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set), memrequest_value = avg(dt.kubernetes.container.requests_memory), cpusagevalues = max(dt.kubernetes.container.cpu_usage), by:{dt.smartscape.container}, from: -7d
+    | fieldsAdd request_memory = arrayPercentile(memrequest_value, 95), usage_memory = arrayPercentile(memusagevalues, 95), usage_cpu = arrayPercentile(cpusagevalues, 95)
+  ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{usage_memory, request_memory, usage_cpu}
+| lookup [
+    timeseries cpurequest_value = avg(dt.kubernetes.container.requests_cpu), by:{dt.smartscape.container}, from: -7d
+    | fieldsAdd request_cpu = arrayPercentile(cpurequest_value, 95)
+  ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{request_cpu}
 | filter isNotNull(usage_memory) AND isNotNull(usage_cpu)
 | fieldsAdd memratio = if(request_memory > 0, usage_memory / request_memory * 100), cpuratio = if(request_cpu > 0, usage_cpu / request_cpu * 100)
 | fieldsAdd cpurecommended = usage_cpu * 1.30, memoryrecommended = usage_memory * 1.30
