@@ -518,28 +518,33 @@
 
 <h1 id="6-watch-the-gap-shrink">6. Watch the Gap Shrink<a class="headerlink" href="#6-watch-the-gap-shrink" title="Permanent link">#</a></h1>
 <p>The pods now reserve what they use plus headroom. Dynatrace sees the new requests within a minute or
-two. Run the query from step 3 again, or this one, which shows CPU requests appear where there were
-none and memory requests move toward usage:</p>
+two. Run the query from step 3 again, or this one, which shows CPU requests appear on the app
+containers and memory requests move toward usage:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>timeseries {
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    cpu_requested = sum(dt.kubernetes.container.requests_cpu),
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    cpu_used = max(dt.kubernetes.container.cpu_usage),
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    mem_requested = sum(dt.kubernetes.container.requests_memory),
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    mem_used = max(dt.kubernetes.container.memory_working_set)
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  },
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  by:{k8s.workload.name},
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  by:{k8s.workload.name, k8s.container.name},
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  filter: endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}") AND k8s.namespace.name == "otel-demo",
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  from:now()-1h
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>| filter k8s.container.name == k8s.workload.name
 </span></code></pre></div>
+<p>The last line keeps the application containers. Each pod also runs a short <code>dynatrace-operator</code> init
+container, injected by the DynaKube, which requests 30m CPU of its own: left in, it makes every
+workload look as if it had a CPU request all along.</p>
 <p>Switch the result to a line chart: for each workload, <em>requested</em> steps to just above <em>used</em> at the
 moment you applied the recommendations.</p>
-<p>This check proves Dynatrace now reports CPU requests for your workloads — before step 5 they had
-none:</p>
+<p>This check proves Dynatrace now reports CPU requests on your application containers — before step 5
+they had none:</p>
 <!-- LAB_QUESTION
 type: dql-verification
 question: "Verify Dynatrace reports the new CPU requests of your otel-demo workloads"
 buttonText: "Check new requests"
 dql: |
-  timeseries cpu_requested = sum(dt.kubernetes.container.requests_cpu), by:{k8s.workload.name}, filter: endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}") AND k8s.namespace.name == "otel-demo", from:now()-10m
+  timeseries cpu_requested = sum(dt.kubernetes.container.requests_cpu), by:{k8s.workload.name, k8s.container.name}, filter: endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}") AND k8s.namespace.name == "otel-demo", from:now()-10m
+  | filter k8s.container.name == k8s.workload.name
   | filter arrayLast(cpu_requested) > 0
   | summarize count = count()
 expect:

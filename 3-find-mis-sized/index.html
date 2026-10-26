@@ -528,15 +528,16 @@ the Kubernetes API and the real usage from the container metrics — so the gap 
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    mem_requested = sum(dt.kubernetes.container.requests_memory),
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    cpu_used = max(dt.kubernetes.container.cpu_usage)
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  },
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  by:{k8s.workload.name},
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  by:{k8s.workload.name, k8s.container.name},
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  filter: endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}") AND k8s.namespace.name == "otel-demo",
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  from:now()-30m
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>| fieldsAdd mem_used_p95_MiB = arrayPercentile(mem_used, 95) / 1048576,
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>            mem_requested_MiB = arrayAvg(mem_requested) / 1048576,
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>            cpu_used_p95_millicores = arrayPercentile(cpu_used, 95)
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>| fieldsAdd memory_used_pct_of_request = mem_used_p95_MiB / mem_requested_MiB * 100
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>| fields k8s.workload.name, mem_used_p95_MiB, mem_requested_MiB, memory_used_pct_of_request, cpu_used_p95_millicores
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>| sort memory_used_pct_of_request desc
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>| filter k8s.container.name == k8s.workload.name
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>| fieldsAdd mem_used_p95_MiB = arrayPercentile(mem_used, 95) / 1048576,
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>            mem_requested_MiB = arrayAvg(mem_requested) / 1048576,
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>            cpu_used_p95_millicores = arrayPercentile(cpu_used, 95)
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>| fieldsAdd memory_used_pct_of_request = mem_used_p95_MiB / mem_requested_MiB * 100
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>| fields k8s.workload.name, mem_used_p95_MiB, mem_requested_MiB, memory_used_pct_of_request, cpu_used_p95_millicores
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>| sort memory_used_pct_of_request desc
 </span></code></pre></div>
 <p>Read the result:</p>
 <ul>
@@ -545,6 +546,9 @@ the Kubernetes API and the real usage from the container metrics — so the gap 
 <li><strong>Far below 100</strong> — reserved and idle.</li>
 <li><strong>CPU</strong> has no request at all yet, so every millicore used is unreserved.</li>
 </ul>
+<p>The <code>k8s.container.name == k8s.workload.name</code> line keeps the application container of each pod and
+drops the <code>dynatrace-operator</code> init container the DynaKube injects, whose own small requests would
+otherwise be added in.</p>
 <p>The workflow you run next uses the same metrics, over <strong>7 days</strong> and through <strong>Smartscape</strong>: it walks
 from each container to its pod and its workload, keeps only workloads annotated
 <code>resource-optimization.dynatrace.com/enabled: "true"</code>, and recommends <strong>p95 usage × 1.30</strong> — usage

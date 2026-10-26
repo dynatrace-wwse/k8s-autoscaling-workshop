@@ -579,11 +579,18 @@ recommendations to your cluster from the terminal.</p>
 <li>Open the <strong>Workflows</strong> app and choose <strong>Upload</strong>, then select the file.</li>
 <li>The workflow opens as <em>Smart K8s Resource Optimizer ({{DT_SESSION_ID}})</em>. Choose <strong>Run</strong>.</li>
 </ol>
+<div class="admonition warning">
+<p class="admonition-title">First run fails with <code>Missing OAuth scope 'storage:smartscape:read'</code>?</p>
+<p>A workflow runs with <strong>your</strong> permissions, but only those you have authorized the
+AutomationEngine to use. Open the Workflows app's settings (gear icon) → <strong>Authorization
+settings</strong>, search for <code>storage:smartscape:read</code>, tick it, <strong>Save</strong>, and run again. If the page
+says the change won't take effect, your user lacks the permission itself: tell your trainer.</p>
+</div>
 <h2 id="read-the-result">Read the result<a class="headerlink" href="#read-the-result" title="Permanent link">#</a></h2>
 <p>When the run is green, select the <code>compute_recommendations</code> task and open its <strong>Result</strong>:
 <code>recommendations</code> lists, per workload and container, the current and the new CPU and memory request.
 The task's <strong>Log</strong> prints one line per container, for example:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cart/cart: cpu 0m -&gt; 2m, memory 100Mi -&gt; 31Mi
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cart/cart: cpu 0m -&gt; 29m, memory 100Mi -&gt; 243Mi
 </span></code></pre></div>
 <p>The same query runs from your terminal — this is what you apply in the next step:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>showRecommendations
