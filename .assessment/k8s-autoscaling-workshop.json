@@ -1,0 +1,197 @@
+{
+  "templateVersion": "1.0.0",
+  "id": "k8s-autoscaling-workshop",
+  "category": "CO",
+  "title": "K8s Autoscaling Workshop — Knowledge Check",
+  "description": "Validate that you understood how Dynatrace finds mis-sized Kubernetes workloads and how their requests are right-sized.",
+  "difficulty": "intermediate",
+  "estimatedTime": 5,
+  "imagine": "You right-sized the otel-demo-light workloads with Smartscape, DQL and a Workflow.",
+  "yourGoal": "Show you understood what requests are, how the recommendations are computed and how they reach the cluster.",
+  "tools": [
+    {
+      "label": "kubectl"
+    },
+    {
+      "label": "Dynatrace Workflows"
+    },
+    {
+      "label": "DQL"
+    },
+    {
+      "label": "Smartscape"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "title": "What a request is",
+      "content": "What does a container's resource **request** decide in Kubernetes?",
+      "options": [
+        {
+          "id": "a",
+          "text": "How much CPU and memory the scheduler reserves for the pod on a node",
+          "isCorrect": true,
+          "explanation": "Placement and packing are based on requests, not on actual usage."
+        },
+        {
+          "id": "b",
+          "text": "The most the container may ever use",
+          "isCorrect": false,
+          "explanation": "That is the limit."
+        },
+        {
+          "id": "c",
+          "text": "How often the container is restarted",
+          "isCorrect": false,
+          "explanation": "Requests have nothing to do with restarts."
+        }
+      ],
+      "correctAnswer": "a",
+      "explanation": "Requests are reservations: they decide where pods fit, whatever the pods really use.",
+      "points": 200,
+      "hints": [
+        "Think about the scheduler."
+      ]
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "title": "Opt-in",
+      "content": "Which workloads does the Smart K8s Resource Optimizer change?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Only those whose pods carry resource-optimization.dynatrace.com/enabled: \"true\"",
+          "isCorrect": true,
+          "explanation": "The annotation is read from Smartscape; everything else is skipped."
+        },
+        {
+          "id": "b",
+          "text": "Every Deployment in the cluster",
+          "isCorrect": false,
+          "explanation": "System and other namespaces are never touched."
+        },
+        {
+          "id": "c",
+          "text": "Only workloads with a CPU limit",
+          "isCorrect": false,
+          "explanation": "Limits are not the selection criterion."
+        }
+      ],
+      "correctAnswer": "a",
+      "explanation": "The annotation is the opt-in: no annotation, no change.",
+      "points": 200,
+      "hints": [
+        "Look at the workload's annotations."
+      ]
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "title": "The formula",
+      "content": "How does the optimizer compute a new request?",
+      "options": [
+        {
+          "id": "a",
+          "text": "p95 of the observed usage over 7 days, times 1.30",
+          "isCorrect": true,
+          "explanation": "Usage plus 30 % headroom for spikes."
+        },
+        {
+          "id": "b",
+          "text": "The average usage of the last hour",
+          "isCorrect": false,
+          "explanation": "Too short and too low — spikes would be cut off."
+        },
+        {
+          "id": "c",
+          "text": "Twice the current request",
+          "isCorrect": false,
+          "explanation": "That only makes over-provisioning worse."
+        }
+      ],
+      "correctAnswer": "a",
+      "explanation": "p95 × 1.30: measured usage plus headroom.",
+      "points": 200,
+      "hints": [
+        "Percentile and headroom."
+      ]
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "title": "Where the data comes from",
+      "content": "Which data source gives the optimizer the containers' **requests**?",
+      "options": [
+        {
+          "id": "a",
+          "text": "The ActiveGate's Kubernetes monitoring, via the Dynatrace Operator",
+          "isCorrect": true,
+          "explanation": "Requests are Kubernetes object data read from the API."
+        },
+        {
+          "id": "b",
+          "text": "The OpenTelemetry SDK in each service",
+          "isCorrect": false,
+          "explanation": "SDKs report application telemetry, not pod specs."
+        },
+        {
+          "id": "c",
+          "text": "The k6 load generator",
+          "isCorrect": false,
+          "explanation": "k6 only creates load."
+        }
+      ],
+      "correctAnswer": "a",
+      "explanation": "The Operator's ActiveGate feeds Smartscape and the container metrics.",
+      "points": 200,
+      "hints": [
+        "Which component talks to the Kubernetes API?"
+      ]
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "title": "Applying the change",
+      "content": "In this workshop, how do the recommendations reach the cluster?",
+      "options": [
+        {
+          "id": "a",
+          "text": "applyRecommendations patches the workloads' requests with kubectl, and Kubernetes rolls the pods",
+          "isCorrect": true,
+          "explanation": "An in-place apply instead of the upstream pull request."
+        },
+        {
+          "id": "b",
+          "text": "The workflow pushes a commit to a GitHub fork",
+          "isCorrect": false,
+          "explanation": "That was the original workshop; here no fork is needed."
+        },
+        {
+          "id": "c",
+          "text": "The OpenTelemetry Collector rewrites the pods",
+          "isCorrect": false,
+          "explanation": "The collector only handles telemetry."
+        }
+      ],
+      "correctAnswer": "a",
+      "explanation": "A rolling update replaces the pods with the new requests.",
+      "points": 200,
+      "hints": [
+        "What did you run in step 5?"
+      ]
+    }
+  ],
+  "maxScore": 1000,
+  "tags": [
+    "kubernetes",
+    "resource-optimization"
+  ],
+  "learningObjectives": [
+    "Explain what a resource request decides",
+    "Explain how the optimizer selects workloads and computes requests",
+    "Apply recommendations to a cluster and verify them in Dynatrace"
+  ]
+}

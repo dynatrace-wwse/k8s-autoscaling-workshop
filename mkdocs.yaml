@@ -1,0 +1,15 @@
+INHERIT: mkdocs-base.yaml
+# Orbital's catalog name (mkdocs warns about the unknown key — expected).
+training_name: "K8s Autoscaling Workshop"
+site_name: "Dynatrace Enablement Lab: K8s Autoscaling Workshop"
+repo_name: "View Code on GitHub"
+repo_url: "https://github.com/dynatrace-wwse/k8s-autoscaling-workshop"
+nav:
+  - "Welcome": index.md
+  - "1. Check the Environment": 1-environment.md
+  - "2. See Your Telemetry": 2-telemetry.md
+  - "3. Find Mis-sized Workloads": 3-find-mis-sized.md
+  - "4. Run the Workflow": 4-run-workflow.md
+  - "5. Apply the Recommendations": 5-apply.md
+  - "6. Watch the Gap Shrink": 6-watch-the-gap.md
+  - "Resources": resources.md

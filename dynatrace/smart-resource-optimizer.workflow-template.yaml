@@ -1,0 +1,109 @@
+# Smart K8s Resource Optimizer — workflow template for the Workflows app (Upload).
+#
+# Ported from Henrik Rexed's K8s-autoscalingWorkshop
+# (dynatrace/smart-resource-optimizer.workflow-template.yaml). Kept: the Smartscape
+# DQL (containers -> pods -> deployments, the resource-optimization annotation,
+# 7-day p95 usage and requests, recommended = p95 usage x 1.30). Removed: the
+# GitHub connection and the update-file / create-pull-request tasks — in this
+# training the learner applies the result in the cluster with applyRecommendations.
+# Added: a filter on the learner's cluster (the tenant is shared in a workshop).
+#
+# Do not upload this file directly: run `generateWorkflow` in the terminal, which
+# writes .devcontainer/yaml/gen/smart-resource-optimizer.workflow.yaml with your
+# session id in place of SESSION_ID_TO_REPLACE.
+metadata:
+  version: '1'
+  dependencies:
+    apps:
+    - id: dynatrace.automations
+      version: ^1.2834.0
+  inputs: []
+workflow:
+  title: Smart K8s Resource Optimizer (SESSION_ID_TO_REPLACE)
+  description: Queries Smartscape for the otel-demo workloads of one learner cluster and computes new CPU/memory requests from 7-day p95 usage x 1.30. Apply them in the cluster with applyRecommendations.
+    Ported from henrikrexed/K8s-autoscalingWorkshop.
+  schemaVersion: 4
+  trigger: {}
+  result: null
+  type: STANDARD
+  input: {}
+  hourlyExecutionLimit: 1000
+  guide: null
+  tasks:
+    collect_underutilized_workloads:
+      name: collect_underutilized_workloads
+      action: dynatrace.automations:execute-dql-query
+      position:
+        x: 0
+        y: 1
+      description: Smartscape containers of your cluster with the resource-optimization annotation, joined with 7-day p95 usage and requests.
+      predecessors: []
+      input:
+        query: |-
+          smartscapeNodes CONTAINER
+          | fieldsRename containername = name
+          | traverse is_part_of, K8S_POD, fieldsKeep:{id, containername}
+          | fieldsAdd podname = k8s.pod.name, podid = id
+          | traverse is_part_of, K8S_DEPLOYMENT, fieldsKeep:{podname, podid}
+          | fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername = dt.traverse.history[0][containername], containerid = dt.traverse.history[0][id]
+          | filter endsWith(k8s.cluster.name, "SESSION_ID_TO_REPLACE")
+          | filter k8s.namespace.name == "otel-demo"
+          | fieldsAdd optimization = if(isNotNull(`tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`], else: "false")
+          | filter optimization == "true"
+          | lookup [
+              timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set), memrequest_value = sum(dt.kubernetes.container.requests_memory), cpusagevalues = max(dt.kubernetes.container.cpu_usage), cpurequest_value = sum(dt.kubernetes.container.requests_cpu), by:{dt.smartscape.container}, from: -7d
+              | fieldsAdd request_memory = arrayPercentile(memrequest_value, 95), usage_memory = arrayPercentile(memusagevalues, 95)
+              | fieldsAdd request_cpu = arrayPercentile(cpurequest_value, 95), usage_cpu = arrayPercentile(cpusagevalues, 95)
+            ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{usage_memory, request_memory, usage_cpu, request_cpu}
+          | filter isNotNull(usage_memory) AND isNotNull(usage_cpu)
+          | fieldsAdd memratio = if(request_memory > 0, usage_memory / request_memory * 100), cpuratio = if(request_cpu > 0, usage_cpu / request_cpu * 100)
+          | fieldsAdd cpurecommended = usage_cpu * 1.30, memoryrecommended = usage_memory * 1.30
+          | summarize containers = collectArray(record(containername, cpurecommended, memoryrecommended, request_cpu, request_memory, cpuratio, memratio)), by:{workloadname = k8s.workload.name}
+    compute_recommendations:
+      name: compute_recommendations
+      action: dynatrace.automations:run-javascript
+      position:
+        x: 0
+        y: 2
+      description: New CPU/memory requests per container.
+      predecessors:
+      - collect_underutilized_workloads
+      conditions:
+        states:
+          collect_underutilized_workloads: OK
+      input:
+        script: |
+          // Smart K8s Resource Optimizer — recommendation step.
+          // Ported from Henrik Rexed's K8s-autoscalingWorkshop. The original patched the
+          // manifests in the attendee's GitHub fork and opened a pull request; in this
+          // training the learner applies the result in the cluster with applyRecommendations.
+          import { execution } from '@dynatrace-sdk/automation-utils';
+
+          function toMi(bytes: number): number { return Math.ceil(bytes / 1048576); }
+          function toMillicores(mc: number): number { return Math.max(1, Math.ceil(mc)); }
+
+          export default async function ({ execution_id }) {
+            const ex = await execution(execution_id);
+            const result = await ex.result('collect_underutilized_workloads');
+            const records = (result && result.records) || [];
+            const recommendations = [];
+            for (const w of records) {
+              for (const c of (w.containers || [])) {
+                recommendations.push({
+                  workload: w.workloadname,
+                  container: c.containername,
+                  cpu_request_now_m: Math.round(c.request_cpu || 0),
+                  cpu_request_new_m: toMillicores(c.cpurecommended || 0),
+                  memory_request_now_mi: Math.round((c.request_memory || 0) / 1048576),
+                  memory_request_new_mi: toMi(c.memoryrecommended || 0),
+                  cpu_usage_vs_request_pct: c.cpuratio == null ? null : Math.round(c.cpuratio),
+                  memory_usage_vs_request_pct: c.memratio == null ? null : Math.round(c.memratio),
+                });
+              }
+            }
+            console.log(`${recommendations.length} container recommendation(s)`);
+            for (const r of recommendations) {
+              console.log(`${r.workload}/${r.container}: cpu ${r.cpu_request_now_m}m -> ${r.cpu_request_new_m}m, memory ${r.memory_request_now_mi}Mi -> ${r.memory_request_new_mi}Mi`);
+            }
+            return { total: recommendations.length, recommendations };
+          }

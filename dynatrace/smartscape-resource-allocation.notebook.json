@@ -1,0 +1,178 @@
+{
+  "version": "7",
+  "defaultTimeframe": {
+    "from": "now()-2h",
+    "to": "now()"
+  },
+  "defaultSegments": [],
+  "sections": [
+    {
+      "id": "73bdc79c-bf50-482f-9767-05f24c319978",
+      "type": "markdown",
+      "markdown": "# Query retrieving unoptimized workload"
+    },
+    {
+      "id": "6c9597ac-92de-4c67-bbf4-1d89cb92344e",
+      "type": "dql",
+      "showTitle": false,
+      "drilldownPath": [],
+      "filterSegments": [],
+      "state": {
+        "input": {
+          "timeframe": {
+            "from": "now()-2h",
+            "to": "now()"
+          },
+          "value": "smartscapeNodes CONTAINER   \n| fieldsRename containername=name\n| traverse is_part_of, K8S_POD, fieldsKeep:{id,containername} \n| fieldsAdd podname= k8s.pod.name, podid=id\n| traverse is_part_of, K8S_DEPLOYMENT,fieldsKeep:{  podname, podid}\n| fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername=dt.traverse.history[0][containername],containerid=dt.traverse.history[0][id]\n| fieldsAdd Appnamespace = in(k8s.namespace.name, \"dynatrace\",\"kube-system\",\"falco\",\"kyverno\",\"gmp-system\",\"cert-manager\",\"kuma-system\",\"opentelemetry-operator-system\")\n| filter not Appnamespace\n| fieldsAdd optimization= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`],else: \"false\") \n| fieldsAdd owner= if(isNotNull( `tags:k8s.labels`[dt.owner]), `tags:k8s.labels`[dt.owner],else: \"NA\") \n| fieldsAdd github_repo= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-rep`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-rep`],else: \"NA\") \n| fieldsAdd github_path= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-path`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-path`],else: \"NA\") \n| fieldsAdd github_branch= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-branch`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-branch`],else: \"NA\") \n| fieldsAdd k8sobject= k8s.object\n| lookup [\n    timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set ),memrequest_value=sum(dt.kubernetes.container.requests_memory ),cpusagevalues = max(dt.kubernetes.container.cpu_usage ),cpurequest_value=sum(dt.kubernetes.container.requests_cpu ) , by:{dt.smartscape.container}, from: -7d\n    | fieldsAdd request_memory = arrayPercentile(memrequest_value,95) \n    | fieldsAdd usage_memory = arrayPercentile(memusagevalues,95) \n\t| fieldsAdd request_cpu = arrayPercentile(cpurequest_value,95) \n    | fieldsAdd usage_cpu= arrayPercentile(cpusagevalues,95) \n    | fieldsAdd memratio = (usage_memory/request_memory) * 100\n\t| fieldsAdd cpuratio = (usage_cpu/request_cpu) * 100\n  ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{ memratio,usage_memory,request_memory,cpuratio,request_cpu,usage_cpu }\n| filter isNotNull(cpuratio) AND isNotNull(memratio) AND isNotNull(usage_cpu) AND isNotNull( usage_memory) AND isNotNull(request_cpu) AND isNotNull(request_memory)\n| filter (memratio < 60 or memratio> 110) or ( cpuratio < 30 or cpuratio > 110)\n"
+        },
+        "visualizationSettings": {
+          "table": {
+            "hideColumnsForLargeResults": true
+          },
+          "autoSelectVisualization": true,
+          "chartSettings": {}
+        },
+        "querySettings": {
+          "maxResultRecords": 1000,
+          "defaultScanLimitGbytes": 500,
+          "maxResultMegaBytes": 1,
+          "defaultSamplingRatio": 10,
+          "enableSampling": false
+        },
+        "state": "idle",
+        "davis": {
+          "includeLogs": true,
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      }
+    },
+    {
+      "id": "76f420a0-c5ef-45c5-a398-df101e20daf5",
+      "type": "markdown",
+      "markdown": "# Query retrieving with suggestion\n\n"
+    },
+    {
+      "id": "db28c5e4-c072-4a1b-9ba8-93103a2d497d",
+      "type": "dql",
+      "showTitle": false,
+      "drilldownPath": [],
+      "filterSegments": [],
+      "state": {
+        "input": {
+          "timeframe": {
+            "from": "now()-2h",
+            "to": "now()"
+          },
+          "value": "\nsmartscapeNodes CONTAINER   \n| fieldsRename containername=name\n| traverse is_part_of, K8S_POD, fieldsKeep:{id,containername} \n| fieldsAdd podname= k8s.pod.name, podid=id\n| traverse is_part_of, K8S_DEPLOYMENT,fieldsKeep:{  podname, podid}\n| fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername=dt.traverse.history[0][containername],containerid=dt.traverse.history[0][id]\n| fieldsAdd Appnamespace = in(k8s.namespace.name, \"dynatrace\",\"kube-system\",\"falco\",\"kyverno\",\"gmp-system\",\"cert-manager\",\"kuma-system\",\"opentelemetry-operator-system\")\n| filter not Appnamespace\n| fieldsAdd optimization= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`],else: \"false\") \n| fieldsAdd owner= if(isNotNull( `tags:k8s.labels`[dt.owner]), `tags:k8s.labels`[dt.owner],else: \"NA\") \n| fieldsAdd github_repo= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-rep`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-rep`],else: \"NA\") \n| fieldsAdd github_path= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-path`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-path`],else: \"NA\") \n| fieldsAdd github_branch= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-branch`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-branch`],else: \"NA\") \n| fieldsAdd k8sobject= k8s.object\n| lookup [\n    timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set ),memrequest_value=sum(dt.kubernetes.container.requests_memory ),cpusagevalues = max(dt.kubernetes.container.cpu_usage ),cpurequest_value=sum(dt.kubernetes.container.requests_cpu ) , by:{dt.smartscape.container}, from: -7d\n    | fieldsAdd request_memory = arrayPercentile(memrequest_value,95) \n    | fieldsAdd usage_memory = arrayPercentile(memusagevalues,95) \n\t| fieldsAdd request_cpu = arrayPercentile(cpurequest_value,95) \n    | fieldsAdd usage_cpu= arrayPercentile(cpusagevalues,95) \n    | fieldsAdd memratio = (usage_memory/request_memory) * 100\n\t| fieldsAdd cpuratio = (usage_cpu/request_cpu) * 100\n  ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{ memratio,usage_memory,request_memory,cpuratio,request_cpu,usage_cpu }\n| filter isNotNull(cpuratio) AND isNotNull(memratio) AND isNotNull(usage_cpu) AND isNotNull( usage_memory) AND isNotNull(request_cpu) AND isNotNull(request_memory)\n| filter (memratio < 60 or memratio> 110) or ( cpuratio < 30 or cpuratio > 110)\n| fieldsAdd cpurecommended= usage_cpu * 1.30 , memoryrecommened = usage_memory * 1.30\n| fields workloadid= id, containername, k8sobject,workloadname=k8s.workload.name,podname, clustername=k8s.cluster.name, owner, memratio, cpuratio, memoryrecommened, cpurecommended, usage_memory,request_memory,optimization, github_repo, github_path, github_branch\n"
+        },
+        "visualizationSettings": {
+          "autoSelectVisualization": false,
+          "chartSettings": {}
+        },
+        "querySettings": {
+          "maxResultRecords": 1000,
+          "defaultScanLimitGbytes": 500,
+          "maxResultMegaBytes": 1,
+          "defaultSamplingRatio": 10,
+          "enableSampling": false
+        },
+        "visualization": "recordView",
+        "state": "idle",
+        "davis": {
+          "includeLogs": true,
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      }
+    },
+    {
+      "id": "12ace153-57d0-4163-a790-1952b5f1bded",
+      "type": "markdown",
+      "markdown": "\n# Query retrieving with savings\n\n"
+    },
+    {
+      "id": "602bd30e-9f0f-46da-bd98-68d8f9d52403",
+      "type": "dql",
+      "showTitle": false,
+      "drilldownPath": [],
+      "filterSegments": [],
+      "state": {
+        "input": {
+          "timeframe": {
+            "from": "now()-2h",
+            "to": "now()"
+          },
+          "value": "\nsmartscapeNodes CONTAINER   \n| fieldsRename containername=name\n| traverse is_part_of, K8S_POD, fieldsKeep:{id,containername} \n| fieldsAdd podname= k8s.pod.name, podid=id\n| traverse is_part_of, K8S_DEPLOYMENT,fieldsKeep:{  podname, podid}\n| fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername=dt.traverse.history[0][containername],containerid=dt.traverse.history[0][id]\n| fieldsAdd Appnamespace = in(k8s.namespace.name, \"dynatrace\",\"kube-system\",\"falco\",\"kyverno\",\"gmp-system\",\"cert-manager\",\"kuma-system\",\"opentelemetry-operator-system\")\n| filter not Appnamespace\n| fieldsAdd optimization= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`],else: \"false\") \n| fieldsAdd owner= if(isNotNull( `tags:k8s.labels`[dt.owner]), `tags:k8s.labels`[dt.owner],else: \"NA\") \n| fieldsAdd github_repo= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-rep`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-rep`],else: \"NA\") \n| fieldsAdd github_path= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-path`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-path`],else: \"NA\") \n| fieldsAdd github_branch= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-branch`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-branch`],else: \"NA\") \n| fieldsAdd k8sobject= k8s.object\n| lookup [\n    timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set ),memrequest_value=sum(dt.kubernetes.container.requests_memory ),cpusagevalues = max(dt.kubernetes.container.cpu_usage ),cpurequest_value=sum(dt.kubernetes.container.requests_cpu ) , by:{dt.smartscape.container}, from: -7d\n    | fieldsAdd request_memory = arrayPercentile(memrequest_value,95) \n    | fieldsAdd usage_memory = arrayPercentile(memusagevalues,95) \n\t| fieldsAdd request_cpu = arrayPercentile(cpurequest_value,95) \n    | fieldsAdd usage_cpu= arrayPercentile(cpusagevalues,95) \n    | fieldsAdd memratio = (usage_memory/request_memory) * 100\n\t| fieldsAdd cpuratio = (usage_cpu/request_cpu) * 100\n  ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{ memratio,usage_memory,request_memory,cpuratio,request_cpu,usage_cpu }\n| filter isNotNull(cpuratio) AND isNotNull(memratio) AND isNotNull(usage_cpu) AND isNotNull( usage_memory) AND isNotNull(request_cpu) AND isNotNull(request_memory)\n| filter (memratio < 60 or memratio> 110) or ( cpuratio < 30 or cpuratio > 110)\n| fieldsAdd cpurecommended= usage_cpu * 1.30 , memoryrecommened = usage_memory * 1.30\n| fields workloadid= id, containername, k8sobject,workloadname=k8s.workload.name,podname, clustername=k8s.cluster.name, owner, memratio, cpuratio, memoryrecommened, cpurecommended, usage_memory,request_memory,optimization, github_repo, github_path, github_branch , request_cpu\n| fieldsAdd memsaving= request_memory - memoryrecommened , cpusaving= request_cpu - cpurecommended"
+        },
+        "visualizationSettings": {
+          "table": {
+            "hideColumnsForLargeResults": true
+          },
+          "autoSelectVisualization": true,
+          "chartSettings": {}
+        },
+        "querySettings": {
+          "maxResultRecords": 1000,
+          "defaultScanLimitGbytes": 500,
+          "maxResultMegaBytes": 1,
+          "defaultSamplingRatio": 10,
+          "enableSampling": false
+        },
+        "state": "idle",
+        "davis": {
+          "includeLogs": true,
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        },
+        "visualization": "table"
+      }
+    },
+    {
+      "id": "cff481b4-3dbc-4927-9411-00de75e26ec4",
+      "type": "markdown",
+      "markdown": "# grouping per workload"
+    },
+    {
+      "id": "61833b7e-82c4-425d-98f1-d36d53dbf2e3",
+      "type": "dql",
+      "showTitle": false,
+      "drilldownPath": [],
+      "filterSegments": [],
+      "state": {
+        "input": {
+          "timeframe": {
+            "from": "now()-2h",
+            "to": "now()"
+          },
+          "value": "smartscapeNodes CONTAINER\n| fieldsRename containername=name\n| traverse is_part_of, K8S_POD, fieldsKeep:{id,containername}\n| fieldsAdd podname= k8s.pod.name, podid=id\n| traverse is_part_of, K8S_DEPLOYMENT,fieldsKeep:{podname, podid}\n| fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername=dt.traverse.history[0][containername],containerid=dt.traverse.history[0][id]\n| fieldsAdd Appnamespace = in(k8s.namespace.name, \"dynatrace\",\"kube-system\",\"falco\",\"kyverno\",\"gmp-system\",\"cert-manager\",\"kuma-system\",\"opentelemetry-operator-system\")\n| filter not Appnamespace\n| fieldsAdd optimization= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`],else: \"false\")\n| fieldsAdd owner= if(isNotNull( `tags:k8s.labels`[dt.owner]), `tags:k8s.labels`[dt.owner],else: \"NA\")\n| fieldsAdd github_repo= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-repo`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-repo`],else: \"NA\")\n| fieldsAdd github_path= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-path`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-path`],else: \"NA\")\n| fieldsAdd github_branch= if(isNotNull( `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-branch`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/github-branch`],else: \"NA\")\n| fieldsAdd k8sobject= k8s.object\n| filter optimization == \"true\"\n| filter github_repo != \"NA\" AND github_path != \"NA\" AND github_path!= \"NA\"\n\n\n| lookup [\n    timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set ),memrequest_value=sum(dt.kubernetes.container.requests_memory ),cpusagevalues = max(dt.kubernetes.container.cpu_usage ),cpurequest_value=sum(dt.kubernetes.container.requests_cpu ) , by:{dt.smartscape.container}, from: -7d\n    | fieldsAdd request_memory = arrayPercentile(memrequest_value,95)\n    | fieldsAdd usage_memory = arrayPercentile(memusagevalues,95)\n    | fieldsAdd request_cpu = arrayPercentile(cpurequest_value,95)\n    | fieldsAdd usage_cpu= arrayPercentile(cpusagevalues,95)\n    | fieldsAdd memratio = (usage_memory/request_memory) * 100\n    | fieldsAdd cpuratio = (usage_cpu/request_cpu) * 100\n  ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{ memratio,usage_memory,request_memory,cpuratio,request_cpu,usage_cpu }\n| filter isNotNull(cpuratio) AND isNotNull(memratio) AND isNotNull(usage_cpu) AND isNotNull( usage_memory) AND isNotNull(request_cpu) AND isNotNull(request_memory)\n| filter (memratio < 60 or memratio> 110) or ( cpuratio < 30 or cpuratio > 110)\n| fieldsAdd cpurecommended= usage_cpu * 1.30 , memoryrecommened = usage_memory * 1.30\n| fields workloadid= id, containername, k8sobject,workloadname=k8s.workload.name,podname, clustername=k8s.cluster.name, owner, memratio, cpuratio, memoryrecommened, cpurecommended, usage_memory,request_memory,optimization, github_repo, github_path, github_branch , request_cpu\n| fieldsAdd memsaving= request_memory - memoryrecommened , cpusaving= request_cpu - cpurecommended\n| summarize\n    k8sobject = takeFirst(k8sobject),\n    github_repo = takeFirst(github_repo),\n    github_path = takeFirst(github_path),\n    github_branch = takeFirst(github_branch),\n    owner = takeFirst(owner),\n    optimization = takeFirst(optimization),\n    clustername = takeFirst(clustername),\n    containers = collectArray(\n      record(\n        containername,\n        cpurecommended,\n        memoryrecommened,\n        request_cpu,\n        request_memory,\n        cpuratio,\n        memratio,\n        cpusaving,\n        memsaving\n      )\n    ),\n    by: { workloadname }\n"
+        },
+        "visualizationSettings": {
+          "table": {
+            "hideColumnsForLargeResults": true
+          },
+          "autoSelectVisualization": true,
+          "chartSettings": {}
+        },
+        "querySettings": {
+          "maxResultRecords": 1000,
+          "defaultScanLimitGbytes": 500,
+          "maxResultMegaBytes": 1,
+          "defaultSamplingRatio": 10,
+          "enableSampling": false
+        },
+        "visualization": "table",
+        "state": "idle",
+        "davis": {
+          "includeLogs": true,
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      }
+    }
+  ]
+}
