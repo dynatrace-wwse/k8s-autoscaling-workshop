@@ -28,6 +28,15 @@ Tracked in the issue **“Henrik: confirm licence and review the migration”** 
 - [ ] **Accuracy.** Walk the six steps once and check every statement and command against what your
       workshop intends.
 - [ ] **Deviations.** Review the list below and say which ones you want changed.
+- [ ] **Security — CVE-2026-111497 (Brotli).** Two `opentelemetry-demo-light` images ship a vulnerable
+      Brotli decoder: `frontend:0.0.13` runs Node.js 20.20.1 (end-of-life, no fixed 20.x) and `cart:0.0.13`
+      carries Alpine `brotli-libs 1.2.0` (fixed in `1.2.1-r0`). No service in this workshop decodes Brotli
+      input from outside the cluster, so the practical risk is low, but scanners flag both images.
+      Fix upstream: `src/frontend/Dockerfile` → `FROM node:22.23.4-alpine` (or `node:24.22.1-alpine`);
+      `src/cart/Dockerfile` → add `RUN apk upgrade --no-cache brotli-libs` after the runtime `FROM`; publish
+      new tags, then bump them in `otel-demo-light/frontend.yaml` and `otel-demo-light/cart.yaml` here.
+      checkout, payment, product-catalog, the k6 load generator and the Dynatrace collector are not affected.
+      The workshop's own container image is already on `shinojosa/dt-enablement:v1.3.2` (Node 22.23.4).
 
 ## What changed from the original
 
