@@ -2,6 +2,10 @@
 
 [![Dynatrace](https://img.shields.io/badge/Dynatrace-Enablement-purple?logo=dynatrace&logoColor=white)](https://dynatrace-wwse.github.io/k8s-autoscaling-workshop/)
 
+[![Integration tests](https://github.com/dynatrace-wwse/k8s-autoscaling-workshop/actions/workflows/integration-tests.yaml/badge.svg)](https://github.com/dynatrace-wwse/k8s-autoscaling-workshop/actions)
+[![Version](https://img.shields.io/github/v/release/dynatrace-wwse/k8s-autoscaling-workshop?color=blueviolet)](https://github.com/dynatrace-wwse/k8s-autoscaling-workshop/releases)
+[![Commits](https://img.shields.io/github/commits-since/dynatrace-wwse/k8s-autoscaling-workshop/latest?color=ff69b4&include_prereleases)](https://github.com/dynatrace-wwse/k8s-autoscaling-workshop/graphs/commit-activity)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?color=green)](https://github.com/dynatrace-wwse/k8s-autoscaling-workshop/blob/main/LICENSE)
 Right-size Kubernetes workloads with Dynatrace **Smartscape**, **DQL** and a **Workflow**: find the
 workloads whose CPU and memory requests do not match what they use, compute new requests from
 7-day p95 usage, apply them and watch the gap between *requested* and *used* shrink.
