@@ -1,8 +1,0 @@
-# Repo override of the framework's DynaKube defaults (loadDynakubeConfig).
-#
-# k8s-only: ActiveGate with kubernetes-monitoring, no OneAgent. The upstream
-# workshop ran the same way ("ActiveGate-only — no OneAgent injection into demo
-# workloads"): the demo app is observed through its own OpenTelemetry SDKs and the
-# workshop's collector, while the Operator + ActiveGate feed Smartscape and the
-# Kubernetes container metrics the recommendations are computed from.
-mode: k8s-only
