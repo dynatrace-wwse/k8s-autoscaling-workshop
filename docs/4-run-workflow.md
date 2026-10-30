@@ -22,13 +22,14 @@ request to set.
     workflow shows the recommendations in Dynatrace, and in the next step you apply the same
     recommendations to your cluster from the terminal.
 
-## Upload the workflow
+## Deploy  the workflow
 
-A copy scoped to **your** cluster was written when this step opened. Print it:
 
-```bash
-cat .devcontainer/yaml/gen/smart-resource-optimizer.workflow.yaml
-```
+<!-- STEP_SETUP
+commands:
+  - echo "deploying the resource optimizer worfflow"
+  - dtctl apply -f .devcontainer/yaml/gen/smart-resource-optimizer.workflow.yaml
+-->
 
 Then, in your tenant:
 
@@ -85,3 +86,9 @@ explanation: "The optimizer only considers opted-in workloads: the annotation is
 -->
 
 <!-- LAB_NO_SOLUTION: the upload and run happen in the Workflows app; learner tokens cannot hold automation scopes, so no command can repeat them — and nothing later depends on them: step 5 computes the same recommendations from the terminal -->
+
+
+
+
+
+
