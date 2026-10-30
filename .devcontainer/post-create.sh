@@ -26,4 +26,8 @@ deployOtelDemoLight
 
 finalizePostCreation
 
+installDtctl
+
+enableDtctl
+
 printInfoSection "Your dev container finished creating"
