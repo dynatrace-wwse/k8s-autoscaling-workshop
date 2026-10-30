@@ -43,12 +43,64 @@ from each container to its pod and its workload, keeps only workloads annotated
 `resource-optimization.dynatrace.com/enabled: "true"`, and recommends **p95 usage × 1.30** — usage
 plus 30 % headroom.
 
+
+
 !!! tip "The upstream notebook"
     The original workshop ships a notebook, *Smartscape Resource allocation*, with these queries and
     charts. It is in this repository as `dynatrace/smartscape-resource-allocation.notebook.json`; to
     use it, download it and choose **Upload** in the Notebooks app. Its queries are not scoped to
     your cluster: in a shared tenant you see every learner's workloads.
 
+
+1. Download the file: in the Explorer, right-click `dynatrace/smartscape-resource-allocation.notebook.json` → **Download**.
+2. Open the **Notebook** app and choose **Upload**, then select the file.
+
+## Add K8s metadata to take action
+
+To Automate the resource optimization, we need to add the k8s information.
+For this we will utilize the smartscape.
+```dql
+smartscapeNodes CONTAINER
+          | fieldsRename containername = name
+          | traverse is_part_of, K8S_POD, fieldsKeep:{id, containername}
+          | fieldsAdd podname = k8s.pod.name, podid = id
+          | traverse is_part_of, K8S_DEPLOYMENT, fieldsKeep:{podname, podid}
+          | fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername = dt.traverse.history[0][containername], containerid = dt.traverse.history[0][id]
+          | filter  endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}")
+          | filter k8s.namespace.name == "otel-demo"
+          | fieldsAdd optimization = if(isNotNull(`tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`], else: "false")
+          | filter optimization == "true"
+       
+```
+
+now we can combine both queries with a lookup:
+
+```dql
+smartscapeNodes CONTAINER
+          | fieldsRename containername = name
+          | traverse is_part_of, K8S_POD, fieldsKeep:{id, containername}
+          | fieldsAdd podname = k8s.pod.name, podid = id
+          | traverse is_part_of, K8S_DEPLOYMENT, fieldsKeep:{podname, podid}
+          | fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername = dt.traverse.history[0][containername], containerid = dt.traverse.history[0][id]
+          | filter  endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}")
+          | filter k8s.namespace.name == "otel-demo"
+          | fieldsAdd optimization = if(isNotNull(`tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`], else: "false")
+          | filter optimization == "true"
+         | lookup [
+              timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set), memrequest_value = avg(dt.kubernetes.container.requests_memory), cpusagevalues = max(dt.kubernetes.container.cpu_usage), by:{dt.smartscape.container}, from: -7d
+              | fieldsAdd request_memory = arrayPercentile(memrequest_value, 95), usage_memory = arrayPercentile(memusagevalues, 95), usage_cpu = arrayPercentile(cpusagevalues, 95)
+            ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{usage_memory, request_memory, usage_cpu}
+          | lookup [
+              timeseries cpurequest_value = avg(dt.kubernetes.container.requests_cpu), by:{dt.smartscape.container}, from: -7d
+              | fieldsAdd request_cpu = arrayPercentile(cpurequest_value, 95)
+            ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{request_cpu}
+          | filter isNotNull(usage_memory) AND isNotNull(usage_cpu)
+          | fieldsAdd memratio = if(request_memory > 0, usage_memory / request_memory * 100), cpuratio = if(request_cpu > 0, usage_cpu / request_cpu * 100)
+          | fieldsAdd cpurecommended = usage_cpu * 1.30, memoryrecommended = usage_memory * 1.30
+          | summarize containers = collectArray(record(containername, cpurecommended, memoryrecommended, request_cpu, request_memory, cpuratio, memratio)), by:{workloadname = k8s.workload.name, k8s.object}
+
+```
+ |
 This check proves Dynatrace has your containers' usage and memory requests — the inputs of every
 recommendation:
 
@@ -81,3 +133,5 @@ explanation: "Recommended = p95 usage × 1.30: enough headroom for spikes above 
 -->
 
 <!-- LAB_NO_SOLUTION: read-only step — queries only; nothing in the environment changes -->
+
+
