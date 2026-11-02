@@ -375,6 +375,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#add-k8s-metadata-to-take-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      Add K8s metadata to take action
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -498,6 +507,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#add-k8s-metadata-to-take-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      Add K8s metadata to take action
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -560,7 +578,50 @@ charts. It is in this repository as <code>dynatrace/smartscape-resource-allocati
 use it, download it and choose <strong>Upload</strong> in the Notebooks app. Its queries are not scoped to
 your cluster: in a shared tenant you see every learner's workloads.</p>
 </div>
-<p>This check proves Dynatrace has your containers' usage and memory requests — the inputs of every
+<ol>
+<li>Download the file: in the Explorer, right-click <code>dynatrace/smartscape-resource-allocation.notebook.json</code> → <strong>Download</strong>.</li>
+<li>Open the <strong>Notebook</strong> app and choose <strong>Upload</strong>, then select the file.</li>
+</ol>
+<h2 id="add-k8s-metadata-to-take-action">Add K8s metadata to take action<a class="headerlink" href="#add-k8s-metadata-to-take-action" title="Permanent link">#</a></h2>
+<p>To Automate the resource optimization, we need to add the k8s information.
+For this we will utilize the smartscape.
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>smartscapeNodes CONTAINER
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>          | fieldsRename containername = name
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>          | traverse is_part_of, K8S_POD, fieldsKeep:{id, containername}
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>          | fieldsAdd podname = k8s.pod.name, podid = id
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>          | traverse is_part_of, K8S_DEPLOYMENT, fieldsKeep:{podname, podid}
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>          | fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername = dt.traverse.history[0][containername], containerid = dt.traverse.history[0][id]
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>          | filter  endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}")
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>          | filter k8s.namespace.name == "otel-demo"
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>          | fieldsAdd optimization = if(isNotNull(`tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`], else: "false")
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>          | filter optimization == "true"
+</span></code></pre></div></p>
+<p>now we can combine both queries with a lookup:</p>
+<p><div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>smartscapeNodes CONTAINER
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>          | fieldsRename containername = name
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>          | traverse is_part_of, K8S_POD, fieldsKeep:{id, containername}
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>          | fieldsAdd podname = k8s.pod.name, podid = id
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>          | traverse is_part_of, K8S_DEPLOYMENT, fieldsKeep:{podname, podid}
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>          | fieldsAdd podname = dt.traverse.history[1][podname], podid = dt.traverse.history[1][podid], containername = dt.traverse.history[0][containername], containerid = dt.traverse.history[0][id]
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>          | filter  endsWith(k8s.cluster.name, "{{DT_SESSION_ID}}")
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>          | filter k8s.namespace.name == "otel-demo"
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>          | fieldsAdd optimization = if(isNotNull(`tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`]), `tags:k8s.annotations`[`resource-optimization.dynatrace.com/enabled`], else: "false")
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>          | filter optimization == "true"
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>         | lookup [
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>              timeseries memusagevalues = max(dt.kubernetes.container.memory_working_set), memrequest_value = avg(dt.kubernetes.container.requests_memory), cpusagevalues = max(dt.kubernetes.container.cpu_usage), by:{dt.smartscape.container}, from: -7d
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>              | fieldsAdd request_memory = arrayPercentile(memrequest_value, 95), usage_memory = arrayPercentile(memusagevalues, 95), usage_cpu = arrayPercentile(cpusagevalues, 95)
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>            ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{usage_memory, request_memory, usage_cpu}
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>          | lookup [
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>              timeseries cpurequest_value = avg(dt.kubernetes.container.requests_cpu), by:{dt.smartscape.container}, from: -7d
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>              | fieldsAdd request_cpu = arrayPercentile(cpurequest_value, 95)
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>            ], sourceField:containerid, lookupField:dt.smartscape.container, fields:{request_cpu}
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>          | filter isNotNull(usage_memory) AND isNotNull(usage_cpu)
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>          | fieldsAdd memratio = if(request_memory &gt; 0, usage_memory / request_memory * 100), cpuratio = if(request_cpu &gt; 0, usage_cpu / request_cpu * 100)
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>          | fieldsAdd cpurecommended = usage_cpu * 1.30, memoryrecommended = usage_memory * 1.30
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>          | summarize containers = collectArray(record(containername, cpurecommended, memoryrecommended, request_cpu, request_memory, cpuratio, memratio)), by:{workloadname = k8s.workload.name, k8s.object}
+</span></code></pre></div>
+ |
+This check proves Dynatrace has your containers' usage and memory requests — the inputs of every
 recommendation:</p>
 <!-- LAB_QUESTION
 type: dql-verification

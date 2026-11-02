@@ -387,9 +387,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#upload-the-workflow" class="md-nav__link">
+  <a href="#deploy-the-workflow" class="md-nav__link">
     <span class="md-ellipsis">
-      Upload the workflow
+      Deploy the workflow
     </span>
   </a>
   
@@ -499,9 +499,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#upload-the-workflow" class="md-nav__link">
+  <a href="#deploy-the-workflow" class="md-nav__link">
     <span class="md-ellipsis">
-      Upload the workflow
+      Deploy the workflow
     </span>
   </a>
   
@@ -569,10 +569,13 @@ request, and merging it rolled the change out. Here no fork and no GitHub token 
 workflow shows the recommendations in Dynatrace, and in the next step you apply the same
 recommendations to your cluster from the terminal.</p>
 </div>
-<h2 id="upload-the-workflow">Upload the workflow<a class="headerlink" href="#upload-the-workflow" title="Permanent link">#</a></h2>
-<p>A copy scoped to <strong>your</strong> cluster was written when this step opened. Print it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cat<span class="w"> </span>.devcontainer/yaml/gen/smart-resource-optimizer.workflow.yaml
-</span></code></pre></div>
+<h2 id="deploy-the-workflow">Deploy  the workflow<a class="headerlink" href="#deploy-the-workflow" title="Permanent link">#</a></h2>
+<!-- STEP_SETUP
+commands:
+  - echo "deploying the resource optimizer worfflow"
+  - dtctl apply -f .devcontainer/yaml/gen/smart-resource-optimizer.workflow.yaml
+-->
+
 <p>Then, in your tenant:</p>
 <ol>
 <li>Download the file: in the Explorer, right-click <code>.devcontainer/yaml/gen/smart-resource-optimizer.workflow.yaml</code> → <strong>Download</strong>.</li>
@@ -590,10 +593,10 @@ says the change won't take effect, your user lacks the permission itself: tell y
 <p>When the run is green, select the <code>compute_recommendations</code> task and open its <strong>Result</strong>:
 <code>recommendations</code> lists, per workload and container, the current and the new CPU and memory request.
 The task's <strong>Log</strong> prints one line per container, for example:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cart/cart: cpu 0m -&gt; 29m, memory 100Mi -&gt; 243Mi
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cart/cart: cpu 0m -&gt; 29m, memory 100Mi -&gt; 243Mi
 </span></code></pre></div>
 <p>The same query runs from your terminal — this is what you apply in the next step:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>showRecommendations
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>showRecommendations
 </span></code></pre></div>
 <p>This check proves the recommendations for your cluster can be computed — the same numbers the
 workflow shows:</p>
